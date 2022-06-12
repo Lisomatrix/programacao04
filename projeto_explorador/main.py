@@ -5,20 +5,51 @@ import tkinter
 from glob import iglob
 from tkinter import *
 from tkinter import ttk
-from tkinter.filedialog import askdirectory
-from tkinter.messagebox import showinfo
+from tkinter.filedialog import askdirectory, asksaveasfile
+import os, sys, subprocess
 
-# 96804726
-directory = "/Users/lisomati/Downloads/create-composition-animation/Work with Compositions"
-output = "/Users/lisomati/Downloads/waldo.csv"
+
+def open_file(filename):
+    if sys.platform == "win32":
+        os.startfile(filename)
+    else:
+        opener ="open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, filename])
+
+
+UNITS_MAPPING = [
+    (1<<50, ' PB'),
+    (1<<40, ' TB'),
+    (1<<30, ' GB'),
+    (1<<20, ' MB'),
+    (1<<10, ' KB'),
+    (1, (' byte', ' bytes')),
+]
+
+def pretty_size(bytes, units=UNITS_MAPPING):
+    for factor, suffix in units:
+        if bytes >= factor:
+            break
+    amount = int(bytes / factor)
+
+    if isinstance(suffix, tuple):
+        singular, multiple = suffix
+        if amount == 1:
+            suffix = singular
+        else:
+            suffix = multiple
+    return str(amount) + suffix
 
 
 def create_csv(folders, output):
     f = open(output, 'w')
     writer = csv.writer(f)
 
+    writer.writerow(["Nome", "Extensão", "Pasta", "Caminho", "Pasta"])
+
     for pair in folders:
-        writer.writerow(pair)
+        row = [ pair["name"], pair["extension"], pair["folder"], pair["path"], pair["isFolder"] ]
+        writer.writerow(row)
 
     f.close()
 
@@ -37,6 +68,7 @@ def scan_folder(folder_path, folders):
         name = parts[len(parts) - 1]
 
         extension = ""
+        size = os.path.getsize(f)
 
         if not is_folder:
             name_parts = name.split(".")
@@ -53,7 +85,8 @@ def scan_folder(folder_path, folders):
             "path": f,
             "folder": os.path.dirname(f),
             "isFolder": is_folder,
-            "image": img
+            "image": img,
+            "size": size
         })
 
         # folders.append([name, "." + extension, f, folder_path])
@@ -75,7 +108,7 @@ def filter_files(folders, expression):
 def insert_data(root_folder, folders):
     for pair in folders:
 
-        values = [pair["name"], pair["extension"], pair["path"]]
+        values = [pair["name"], pretty_size(pair["size"]), pair["extension"], pair["path"]]
 
         if not pair["isFolder"] and pair["folder"] != root_folder:
             tree.insert(pair["folder"], tkinter.END, image=pair["image"], values=values, iid=pair["path"], open=False)
@@ -87,6 +120,8 @@ def item_selected(event):
     for selected_item in tree.selection():
         item = tree.item(selected_item)
         record = item['values']
+        print(record)
+        open_file(record[3])
         # show a message
         # showinfo(title='Info', message="waldo")
 
@@ -106,7 +141,7 @@ if __name__ == '__main__':
     s = ttk.Style()
     s.configure('Treeview', rowheight=40)
 
-    columns = ["name", "extension", "path"]
+    columns = ["name", "size", "extension", "path"]
 
     root.title("Explorador de ficheiros")
     root.geometry('920x600')
@@ -117,7 +152,8 @@ if __name__ == '__main__':
     frm.rowconfigure(1, weight=1)
     frm.columnconfigure(0, weight=0)
     frm.columnconfigure(1, weight=0)
-    frm.columnconfigure(2, weight=1)
+    frm.columnconfigure(2, weight=0)
+    frm.columnconfigure(3, weight=1)
 
     ttk.Label(frm, text="Pesquisar:").grid(sticky=W, row=0, column=0)
 
@@ -141,11 +177,19 @@ if __name__ == '__main__':
     ttk.Button(frm, text="Pesquisar", command=search_pressed).grid(sticky=W, row=0, column=2)
     ttk.Button(frm, text="Limpar Pesquisa", command=cancel_pressed).grid(sticky=E, row=0, column=3)
 
-    tree.heading("name", text="Nome")
-    tree.heading("extension", text="Extensão")
-    tree.heading("path", text="Path")
 
-    tree.column("extension", width=5)
+
+    tree.heading("name", text="Nome")
+    tree.column("name", minwidth=200, stretch=True)
+
+    tree.heading("size", text="Tamanho")
+    tree.column("size", width=70, stretch=False)
+
+    tree.heading("extension", text="Extensão")
+    tree.column("extension", width=70, stretch=False)
+
+    tree.heading("path", text="Path")
+    tree.column("path", stretch=True)
 
     tree.grid(row=1, column=0, columnspan=4, sticky='nsew')
 
@@ -155,26 +199,34 @@ if __name__ == '__main__':
 
     tree.bind('<<TreeviewSelect>>', item_selected)
 
-    #root_folder = askdirectory(title='Select Folder')
-    root_folder = directory
+    root_folder = askdirectory(title='Escolher pasta')
     initial_search()
-
-    #create_csv(filtered_folders, output)
 
     insert_data(root_folder, folders)
 
-
     def on_choose_path():
         folders = []
-        root_folder = askdirectory(title='Select Folder')
+        root_folder = askdirectory(title='Escolher pasta')
         scan_folder(root_folder, folders)
         tree.delete(*tree.get_children())
         insert_data(root_folder, folders)
+
+    def on_export_csv():
+        files = [('CSV', '*.csv')]
+
+        output_file = asksaveasfile(filetypes=files, defaultextension=".csv")
+        out_file_path = output_file.name
+
+        if not output_file.name.endswith(".csv"):
+            out_file_path = out_file_path + ".csv"
+
+        create_csv(folders, out_file_path)
 
 
     fileMenu = Menu(menubar)
     fileMenu.add_command(label="Sair", command=root.quit)
     fileMenu.add_command(label="Escolher pasta", command=on_choose_path)
+    fileMenu.add_command(label="Exportar para CSV", command=on_export_csv)
     menubar.add_cascade(label="Ficheiro", menu=fileMenu)
 
     root.mainloop()

@@ -2,7 +2,7 @@ import tkinter
 import tkinter.messagebox
 import pickle
 from tkinter import *
-import datetime
+from xlwt import Workbook
 
 root = tkinter.Tk()
 root.title("To-DoList Nogueira")
@@ -12,7 +12,6 @@ def add_task():
     date = entry_date.get()
 
     try:
-        dateAcomparar = datetime.datetime.strptime(date , '%Y-%m-%d')
         if task != "":
             listbox_tasks.insert(tkinter.END, task + "-" + date)
             entry_task.delete(0, tkinter.END)
@@ -41,6 +40,24 @@ def load_tasks():
 def save_tasks():
     tasks = listbox_tasks.get(0, listbox_tasks.size())
     pickle.dump(tasks, open("tasks.dat", "wb"))
+
+def export_excel():
+    wb = Workbook()
+
+    i = 0
+
+    tasks = listbox_tasks.get(0, listbox_tasks.size())
+
+    tarefas_sheet = wb.add_sheet('TarefasSheet')
+
+    for task in tasks:
+            tarefas_sheet.write(i, 0, task)
+            i = i + 1
+
+    wb.save('Tarefas_Excel.xls')
+
+    tkinter.messagebox.showwarning(title="Aviso!", message="Exportação concluída com sucesso")
+
 
 # Create GUI
 
@@ -80,6 +97,9 @@ if __name__ == '__main__':
     button_load_tasks.pack()
 
     button_save_tasks = tkinter.Button(root, text="Guardar tarefas", width=48, command=save_tasks)
+    button_save_tasks.pack()
+
+    button_save_tasks = tkinter.Button(root, text="Exportar para Excel", width=48, command=export_excel)
     button_save_tasks.pack()
 
     root.mainloop()

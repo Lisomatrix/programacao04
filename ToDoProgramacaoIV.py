@@ -3,9 +3,11 @@ import tkinter.messagebox
 import pickle
 from tkinter import *
 from xlwt import Workbook
+from datetime import date
 
 root = tkinter.Tk()
 root.title("To-DoList Nogueira")
+
 
 def add_task():
     task = entry_task.get()
@@ -13,20 +15,26 @@ def add_task():
 
     try:
         if task != "":
-            listbox_tasks.insert(tkinter.END, task + "-" + date)
+            listbox_tasks.insert(tkinter.END, task + " | " + date)
             entry_task.delete(0, tkinter.END)
             entry_date.delete(0, tkinter.END)
+            save_tasks()
+            load_tasks()
         else:
             tkinter.messagebox.showwarning(title="Aviso!", message="Introduz uma tarefa.")
     except ValueError: 
         tkinter.messagebox.showwarning(title="Aviso!", message="Introduz uma data válida. (yyyy-MM-dd)")
 
+
 def delete_task():
     try:
         task_index = listbox_tasks.curselection()[0]
         listbox_tasks.delete(task_index)
+        save_tasks()
+        load_tasks()
     except:
         tkinter.messagebox.showwarning(title="Aviso!", message="Seleciona uma tarefa.")
+
 
 def load_tasks():
     try:
@@ -37,9 +45,34 @@ def load_tasks():
     except:
         tkinter.messagebox.showwarning(title="Aviso!", message="Nao foi possivel encontrar tarefas")
 
+
+def avisar_load_task():
+
+    today = date.today()
+
+    try:
+        tarefas_de_hoje = ""
+
+        tasks = pickle.load(open("tasks.dat", "rb"))
+
+        listbox_tasks.delete(0, tkinter.END)
+        for task in tasks:
+            listbox_tasks.insert(tkinter.END, task)
+
+            if task.split(" | ")[1] == today.strftime("%Y-%m-%d"):
+                tarefas_de_hoje += task.split(" | ")[0]
+                tarefas_de_hoje += "\n"
+    except:
+        tkinter.messagebox.showwarning(title="Aviso!", message="Nao foi possivel encontrar tarefas")
+
+    if tarefas_de_hoje != "":
+        tkinter.messagebox.showwarning(title="Tarefas para hoje!", message=tarefas_de_hoje)
+
+
 def save_tasks():
     tasks = listbox_tasks.get(0, listbox_tasks.size())
     pickle.dump(tasks, open("tasks.dat", "wb"))
+
 
 def export_excel():
     wb = Workbook()
@@ -62,7 +95,7 @@ def export_excel():
 # Create GUI
 
 if __name__ == '__main__':
-
+    
     frame_tasks = tkinter.Frame(root)
     frame_tasks.pack()
 
@@ -93,13 +126,15 @@ if __name__ == '__main__':
     button_delete_task = tkinter.Button(root, text="Apagar tarefa", width=48, command=delete_task)
     button_delete_task.pack()
 
-    button_load_tasks = tkinter.Button(root, text="Carregar tarefas", width=48, command=load_tasks)
-    button_load_tasks.pack()
+    # button_load_tasks = tkinter.Button(root, text="Carregar tarefas", width=48, command=load_tasks)
+    # button_load_tasks.pack()
 
-    button_save_tasks = tkinter.Button(root, text="Guardar tarefas", width=48, command=save_tasks)
-    button_save_tasks.pack()
+    # button_save_tasks = tkinter.Button(root, text="Guardar tarefas", width=48, command=save_tasks)
+    # button_save_tasks.pack()
 
     button_save_tasks = tkinter.Button(root, text="Exportar para Excel", width=48, command=export_excel)
     button_save_tasks.pack()
+
+    avisar_load_task()
 
     root.mainloop()

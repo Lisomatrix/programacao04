@@ -3,6 +3,7 @@ import tkinter.messagebox
 import pickle
 from tkinter import *
 from xlwt import Workbook
+import datetime
 from datetime import date
 
 root = tkinter.Tk()
@@ -14,7 +15,10 @@ def add_task():
     date = entry_date.get()
 
     try:
-        if task != "":
+        
+        dateAcomparar = datetime.datetime.strptime(date , '%Y-%m-%d')
+        
+        if task != "":            
             listbox_tasks.insert(tkinter.END, task + " | " + date)
             entry_task.delete(0, tkinter.END)
             entry_date.delete(0, tkinter.END)
